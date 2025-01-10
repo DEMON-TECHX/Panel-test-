@@ -37,7 +37,6 @@ const totalUsers = document.getElementById('total-users');
 const activeSessions = document.getElementById('active-sessions');
 const bannedUsers = document.getElementById('banned-users');
 const logoutBtn = document.getElementById('logout-btn');
-const loadingSection = document.getElementById('loading-section');
 
 let currentUserId = null;
 let isAdmin = false;
@@ -58,7 +57,6 @@ function showAppSection() {
     const users = JSON.parse(localStorage.getItem('users') || '{}');
     const username = Object.keys(users).find(name => users[name].id === currentUserId) || 'BLUExDEMON TECH 🌹';
     
-    loadingSection.classList.add('hidden');
     authSection.classList.add('hidden');
     loginInterface.classList.add('hidden');
     appSection.classList.remove('hidden');
@@ -88,7 +86,9 @@ function logout() {
     isAdmin = false;
     localStorage.removeItem('currentUserId');
     localStorage.removeItem('isAdmin');
+    localStorage.removeItem('users');
     authSection.classList.remove('hidden');
+    loginInterface.classList.add('hidden');
     appSection.classList.add('hidden');
     adminSection.classList.add('hidden');
     appendLog('Logged out successfully');
@@ -99,19 +99,12 @@ function checkExistingSession() {
     isAdmin = localStorage.getItem('isAdmin') === 'true';
     
     if (currentUserId) {
-        loadingSection.classList.remove('hidden');
-        authSection.classList.add('hidden');
-        appSection.classList.add('hidden');
-        socket.emit('validateSession', { userId: currentUserId, isAdmin: isAdmin });
+        showAppSection();
+        appendLog(`Welcome back!😊😊`);
     } else {
-        loadingSection.classList.add('hidden');
         authSection.classList.remove('hidden');
+        loginInterface.classList.add('hidden');
     }
-}
-
-function persistLogin(userId, isAdmin) {
-    localStorage.setItem('currentUserId', userId);
-    localStorage.setItem('isAdmin', isAdmin);
 }
 
 function getClientId() {
@@ -373,23 +366,18 @@ socket.on('loginResponse', (response) => {
     if (response.success) {
         currentUserId = response.userId;
         isAdmin = response.isAdmin;
-        persistLogin(currentUserId, isAdmin);
+        
+        // Store users data in localStorage
+        const users = JSON.parse(localStorage.getItem('users') || '{}');
+        users[usernameInput.value] = { id: response.userId };
+        localStorage.setItem('users', JSON.stringify(users));
+        
+        localStorage.setItem('currentUserId', currentUserId);
+        localStorage.setItem('isAdmin', response.isAdmin);
         appendLog(`Logged in successfully. Your user ID is: ${currentUserId}`, loginInterface);
         showAppSection();
     } else {
         appendLog(`Login failed: ${response.message}`, loginInterface);
-    }
-});
-
-socket.on('sessionValidated', (response) => {
-    if (response.valid) {
-        showAppSection();
-        appendLog(`Welcome back!😊😊`);
-    } else {
-        logout();
-        loadingSection.classList.add('hidden');
-        authSection.classList.remove('hidden');
-        appendLog('Your session has expired. Please log in again.');
     }
 });
 
